@@ -1,0 +1,1 @@
+# afghanistan-hazard-map
