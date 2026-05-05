@@ -1,0 +1,623 @@
+<!doctype html>
+<html lang="ps" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>په مایننو او منفجره توکو ککړی سیمو نقشه</title>
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+    crossorigin=""
+  />
+  <style>
+    :root {
+      --header-height: 126px;
+      --sidebar-width: 400px;
+    }
+    html, body {
+      margin: 0;
+      height: 100%;
+      font-family: "Noto Naskh Arabic", "Tahoma", Arial, sans-serif;
+      overflow: hidden;
+      background: #f7f9fc;
+    }
+    .page {
+      display: grid;
+      grid-template-columns: var(--sidebar-width) 1fr;
+      grid-template-rows: var(--header-height) 1fr;
+      height: 100%;
+      direction: ltr;
+    }
+    .header {
+      grid-column: 1 / -1;
+      background: #103b7a;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 18px;
+      padding: 10px 16px;
+      box-sizing: border-box;
+      border-bottom: 3px solid #fff;
+      direction: rtl;
+    }
+    .header img {
+      width: 86px;
+      height: 86px;
+      object-fit: contain;
+      background: #fff;
+      border-radius: 50%;
+      padding: 3px;
+    }
+    .title-wrap {
+      text-align: center;
+      line-height: 1.45;
+      max-width: 980px;
+      font-size: 24px;
+      font-weight: 700;
+      white-space: nowrap;
+      font-family: "B Nazanin", "Nazanin", "Noto Naskh Arabic", "Tahoma", serif;
+    }
+    .sidebar {
+      grid-row: 2;
+      background: #ffffff;
+      border-left: 1px solid #d8dfec;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      direction: rtl;
+    }
+    .sidebar-head {
+      padding: 10px 12px;
+      border-bottom: 1px solid #d8dfec;
+      font-weight: 700;
+      color: #123f81;
+      font-size: 15px;
+    }
+    .tools {
+      display: flex;
+      gap: 6px;
+      margin-top: 8px;
+      flex-wrap: wrap;
+    }
+    .tools input, .tools button {
+      font-family: inherit;
+      border: 1px solid #c9d5ea;
+      border-radius: 5px;
+      padding: 6px 8px;
+      font-size: 12px;
+    }
+    .tools input {
+      flex: 1;
+      min-width: 0;
+    }
+    .tools button {
+      background: #123f81;
+      color: #fff;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .table-wrap {
+      overflow: auto;
+      height: 100%;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+    }
+    th, td {
+      border-bottom: 1px solid #eef2f8;
+      padding: 6px 7px;
+      white-space: nowrap;
+      text-align: right;
+    }
+    th {
+      position: sticky;
+      top: 0;
+      background: #edf3fe;
+      z-index: 1;
+      color: #133b76;
+    }
+    tr:hover {
+      background: #f5f9ff;
+      cursor: pointer;
+    }
+    #map {
+      grid-row: 2;
+      width: 100%;
+      height: 100%;
+    }
+    .leaflet-tooltip.hazard-label {
+      background: rgba(0, 0, 0, 0.72);
+      border: 0;
+      color: #fff;
+      border-radius: 3px;
+      padding: 1px 4px;
+      font-size: 10px;
+      font-weight: 700;
+      box-shadow: none;
+    }
+    .leaflet-tooltip.hazard-label::before {
+      display: none;
+    }
+    .bomb-icon {
+      font-size: 16px;
+      line-height: 16px;
+      filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.5));
+      user-select: none;
+    }
+    .leaflet-popup-content {
+      margin: 10px 12px;
+      min-width: 270px;
+      direction: rtl;
+      text-align: right;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+    .popup-title {
+      font-size: 14px;
+      font-weight: 700;
+      margin-bottom: 7px;
+      color: #103b7a;
+    }
+    .legend {
+      background: rgba(255, 255, 255, 0.95);
+      padding: 9px 10px;
+      border-radius: 7px;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+      font-size: 12px;
+      line-height: 1.45;
+      direction: rtl;
+      min-width: 250px;
+    }
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin: 2px 0;
+    }
+    .legend-dot {
+      width: 11px;
+      height: 11px;
+      border-radius: 50%;
+      border: 1px solid #fff;
+      display: inline-block;
+      flex: 0 0 auto;
+    }
+    .note {
+      margin-top: 6px;
+      padding-top: 6px;
+      border-top: 1px solid #dde5f3;
+      color: #425063;
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <div class="header">
+      <img alt="د افغانستان نښان" src="./logo-emirate.png" />
+      <div class="title-wrap">
+        <div id="title1">د افغانستان اسلامی امارت</div>
+        <div id="title2">د پیښو پر وړاندی د مبارزی اداره</div>
+        <div id="title3">د ماین پاکی د چارو د انسجام او همغږی ریاست</div>
+        <div id="title4">په مایننو او منفجره توکو ککړی سیمو نقشه</div>
+      </div>
+      <img alt="ANDMA" src="./logo-andma.png" />
+    </div>
+
+    <aside class="sidebar">
+      <div class="sidebar-head">
+        <span id="tableTitle">د خطر ساحو جدول (Hazard List)</span>
+        <div class="tools">
+          <input id="searchInput" type="text" placeholder="لټون: Hazard ID, ولایت, ولسوالۍ, کلی" />
+          <button id="langToggle" type="button">English</button>
+          <button id="labelToggle" type="button">Hide ID</button>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th id="thHazardId">Hazard ID</th>
+              <th id="thProvince">ولایت</th>
+              <th id="thDistrict">ولسوالی</th>
+              <th id="thVillage">کلی</th>
+              <th id="thDevice">د ماین نوعه</th>
+              <th id="thStatus">حالت</th>
+            </tr>
+          </thead>
+          <tbody id="hazardRows"></tbody>
+        </table>
+      </div>
+    </aside>
+    <div id="map"></div>
+  </div>
+
+  <script
+    src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+    integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+    crossorigin=""
+  ></script>
+  <script>
+    const afgBounds = L.latLngBounds(
+      L.latLng(28.4, 60.4),
+      L.latLng(38.7, 74.95)
+    );
+
+    const map = L.map("map", {
+      preferCanvas: true,
+      minZoom: 6,
+      maxZoom: 17,
+      maxBounds: afgBounds.pad(0.05),
+      maxBoundsViscosity: 1.0
+    }).fitBounds(afgBounds);
+
+    L.tileLayer(
+      "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+      { maxZoom: 19, attribution: "Tiles &copy; Esri" }
+    ).addTo(map);
+
+    const deviceLabelsPs = {
+      AP: "د پرسونل ضد ماین",
+      APM: "د پرسونل ضد ماین",
+      AT: "د وسایطو ضد ماین",
+      ATM: "د وسایطو ضد ماین",
+      ERW: "د جنګ څخه پاتی شوی مهمات",
+      CM: "خوشه ماینونه",
+      AIM: "په لاس جوړشوی ماینونه",
+      IED: "په لاس جوړشوی ماینونه"
+    };
+    const deviceLabelsEn = {
+      AP: "Anti-personnel mine",
+      APM: "Anti-personnel mine",
+      AT: "Anti-vehicle mine",
+      ATM: "Anti-vehicle mine",
+      ERW: "Explosive remnants of war",
+      CM: "Cluster munitions",
+      AIM: "Artisanal improvised munitions",
+      IED: "Improvised explosive device"
+    };
+
+    const statusLabelsPs = {
+      ACTIVE: "فعال دخطر ساحی",
+      TRANSETIONAL: "تر کار لاندی د خطر ساحی",
+      TRANSITIONAL: "تر کار لاندی د خطر ساحی"
+    };
+    const statusLabelsEn = {
+      ACTIVE: "Active hazard area",
+      TRANSETIONAL: "Transitional hazard area",
+      TRANSITIONAL: "Transitional hazard area"
+    };
+
+    const deviceColors = {
+      AP: "#8e24aa",
+      APM: "#8e24aa",
+      AT: "#1e88e5",
+      ATM: "#1e88e5",
+      ERW: "#d32f2f",
+      CM: "#00897b",
+      AIM: "#fb8c00",
+      IED: "#455a64"
+    };
+    const provinceLabelsPs = {
+      BADAKHSHAN: "بدخشان",
+      BADGHIS: "بادغیس",
+      BAGHLAN: "بغلان",
+      BALKH: "بلخ",
+      BAMYAN: "بامیان",
+      DAYKUNDI: "دایکندي",
+      FARAH: "فراه",
+      FARYAB: "فاریاب",
+      GHAZNI: "غزني",
+      GHOR: "غور",
+      HELMAND: "هلمند",
+      HERAT: "هرات",
+      JOWZJAN: "جوزجان",
+      KABUL: "کابل",
+      KANDAHAR: "کندهار",
+      KAPISA: "کاپیسا",
+      KHOST: "خوست",
+      KUNAR: "کنړ",
+      KUNDUZ: "کندز",
+      LAGHMAN: "لغمان",
+      LOGAR: "لوګر",
+      NANGARHAR: "ننګرهار",
+      NIMROZ: "نیمروز",
+      NURISTAN: "نورستان",
+      PAKTIA: "پکتیا",
+      PAKTIKA: "پکتیکا",
+      PANJSHIR: "پنجشیر",
+      PARWAN: "پروان",
+      SAMANGAN: "سمنګان",
+      SAR_E_POL: "سرپل",
+      SAREPUL: "سرپل",
+      TAKHAR: "تخار",
+      URUZGAN: "اروزګان",
+      WARDAK: "وردګ",
+      MAIDAN_WARDAK: "میدان وردګ",
+      ZABUL: "زابل"
+    };
+
+    const uiPs = {
+      tableTitle: "د خطر ساحو جدول (Hazard List)",
+      searchPlaceholder: "لټون: Hazard ID, ولایت, ولسوالۍ, کلی",
+      toggleButton: "English",
+      labelButtonOn: "Hazard ID پټ کړه",
+      labelButtonOff: "Hazard ID ښکاره کړه",
+      thProvince: "ولایت",
+      thDistrict: "ولسوالی",
+      thVillage: "کلی",
+      thDevice: "د ماین نوعه",
+      thStatus: "حالت",
+      title1: "د افغانستان اسلامی امارت",
+      title2: "د پیښو پر وړاندی د مبارزی اداره",
+      title3: "د ماین پاکی د چارو د انسجام او همغږی ریاست",
+      title4: "په مایننو او منفجره توکو ککړی سیمو نقشه"
+    };
+    const uiEn = {
+      tableTitle: "Hazard List Table",
+      searchPlaceholder: "Search: Hazard ID, province, district, village",
+      toggleButton: "پښتو",
+      labelButtonOn: "Hide ID",
+      labelButtonOff: "Show ID",
+      thProvince: "Province",
+      thDistrict: "District",
+      thVillage: "Village",
+      thDevice: "Device",
+      thStatus: "Status",
+      title1: "Islamic Emirate of Afghanistan",
+      title2: "National Disaster Management Authority",
+      title3: "Directorate of Mine Action Coordination",
+      title4: "Map of Mine and ERW Contaminated Areas"
+    };
+
+    let currentLang = "ps";
+    const searchInput = document.getElementById("searchInput");
+    const langToggle = document.getElementById("langToggle");
+    const labelToggle = document.getElementById("labelToggle");
+    const hazardRows = document.getElementById("hazardRows");
+    const markersById = new Map();
+    let legendDiv = null;
+    let allFeatures = [];
+    let filteredFeatures = [];
+    let labelsVisible = true;
+    let hazardLayer = L.layerGroup().addTo(map);
+
+    function norm(value) {
+      return String(value || "").trim().toUpperCase();
+    }
+    function normalizeKey(value) {
+      return norm(value).replace(/[\s-]+/g, "_");
+    }
+    function localizedProvince(p) {
+      if (currentLang !== "ps") return p.Province || "";
+      return p.Province_PS || provinceLabelsPs[normalizeKey(p.Province)] || p.Province || "";
+    }
+    function localizedDistrict(p) {
+      if (currentLang !== "ps") return p.District || "";
+      return p.District_PS || p.District || "";
+    }
+    function localizedVillage(p) {
+      if (currentLang !== "ps") return p.Village || "";
+      return p.Village_PS || p.Village || "";
+    }
+    function deviceText(device) {
+      const key = norm(device);
+      const lookup = currentLang === "ps" ? deviceLabelsPs : deviceLabelsEn;
+      return lookup[key] || device || (currentLang === "ps" ? "نامعلوم" : "Unknown");
+    }
+    function statusText(status) {
+      const key = norm(status);
+      const lookup = currentLang === "ps" ? statusLabelsPs : statusLabelsEn;
+      return lookup[key] || status || (currentLang === "ps" ? "نامعلوم" : "Unknown");
+    }
+    function pointColor(device) {
+      const key = norm(device);
+      return deviceColors[key] || "#6d798a";
+    }
+
+    function popupHtml(p) {
+      const areaNumber = Number(p["Hazard_Area"]);
+      const areaText = Number.isFinite(areaNumber)
+        ? `${areaNumber.toLocaleString()} m²`
+        : (p["Hazard_Area"] || "N/A");
+      return `
+        <div class="popup-title">${p["Hazard ID"] || "N/A"}</div>
+        <div><b>${currentLang === "ps" ? "ولایت" : "Province"}:</b> ${localizedProvince(p) || "N/A"}</div>
+        <div><b>${currentLang === "ps" ? "ولسوالی" : "District"}:</b> ${localizedDistrict(p) || "N/A"}</div>
+        <div><b>${currentLang === "ps" ? "کلی" : "Village"}:</b> ${localizedVillage(p) || "N/A"}</div>
+        <div><b>${currentLang === "ps" ? "د ماین نوعه" : "Device Type"}:</b> ${deviceText(p.Device)}</div>
+        <div><b>${currentLang === "ps" ? "حالت" : "Status"}:</b> ${statusText(p["Current Status"])}</div>
+        <div><b>${currentLang === "ps" ? "ککړوونکی" : "Contaminated By"}:</b> ${p["Contaminated By"] || "N/A"}</div>
+        <div><b>${currentLang === "ps" ? "د خطر ساحه" : "Hazard Area"}:</b> ${areaText}</div>
+        <div><b>Latitude:</b> ${p.Latitude || "N/A"}</div>
+        <div><b>Longitude:</b> ${p.Longitude || "N/A"}</div>
+      `;
+    }
+
+    function addTableRow(feature) {
+      const p = feature.properties;
+      const row = document.createElement("tr");
+      row.innerHTML = `
+        <td>${p["Hazard ID"] || ""}</td>
+        <td>${localizedProvince(p)}</td>
+        <td>${localizedDistrict(p)}</td>
+        <td>${localizedVillage(p)}</td>
+        <td>${deviceText(p.Device)}</td>
+        <td>${statusText(p["Current Status"])}</td>
+      `;
+      row.addEventListener("click", () => {
+        const marker = markersById.get(p["Hazard ID"]);
+        if (!marker) return;
+        map.setView(marker.getLatLng(), Math.max(map.getZoom(), 11), { animate: true });
+        marker.openPopup();
+      });
+      hazardRows.appendChild(row);
+    }
+
+    function getLegendHtml() {
+      if (currentLang === "ps") {
+        return `
+          <div><b>د وسیلو ډولونه</b></div>
+          <div class="legend-item"><span class="legend-dot" style="background:#8e24aa"></span> AP - د پرسونل ضد ماین</div>
+          <div class="legend-item"><span class="legend-dot" style="background:#1e88e5"></span> AT - د وسایطو ضد ماین</div>
+          <div class="legend-item"><span class="legend-dot" style="background:#d32f2f"></span> ERW - د جنګ څخه پاتی شوی مهمات</div>
+          <div class="legend-item"><span class="legend-dot" style="background:#00897b"></span> CM - خوشه ماینونه</div>
+          <div class="legend-item"><span class="legend-dot" style="background:#fb8c00"></span> AIM - په لاس جوړشوی ماینونه</div>
+          <div class="legend-item"><span class="legend-dot" style="background:#455a64"></span> IED - په لاس جوړشوی ماینونه</div>
+          <div class="note"><b>حالت:</b> Active = فعال دخطر ساحی ، Transetional = تر کار لاندی د خطر ساحی</div>
+        `;
+      }
+      return `
+        <div><b>Device Types</b></div>
+        <div class="legend-item"><span class="legend-dot" style="background:#8e24aa"></span> AP - Anti-personnel mine</div>
+        <div class="legend-item"><span class="legend-dot" style="background:#1e88e5"></span> AT - Anti-vehicle mine</div>
+        <div class="legend-item"><span class="legend-dot" style="background:#d32f2f"></span> ERW - Explosive remnants of war</div>
+        <div class="legend-item"><span class="legend-dot" style="background:#00897b"></span> CM - Cluster munitions</div>
+        <div class="legend-item"><span class="legend-dot" style="background:#fb8c00"></span> AIM - Artisanal improvised munitions</div>
+        <div class="legend-item"><span class="legend-dot" style="background:#455a64"></span> IED - Improvised explosive device</div>
+        <div class="note"><b>Status:</b> Active = Active hazard area, Transetional = Transitional hazard area</div>
+      `;
+    }
+
+    function applyUiLanguage() {
+      const ui = currentLang === "ps" ? uiPs : uiEn;
+      document.getElementById("tableTitle").textContent = ui.tableTitle;
+      searchInput.placeholder = ui.searchPlaceholder;
+      langToggle.textContent = ui.toggleButton;
+      document.getElementById("thProvince").textContent = ui.thProvince;
+      document.getElementById("thDistrict").textContent = ui.thDistrict;
+      document.getElementById("thVillage").textContent = ui.thVillage;
+      document.getElementById("thDevice").textContent = ui.thDevice;
+      document.getElementById("thStatus").textContent = ui.thStatus;
+      document.getElementById("title1").textContent = ui.title1;
+      document.getElementById("title2").textContent = ui.title2;
+      document.getElementById("title3").textContent = ui.title3;
+      document.getElementById("title4").textContent = ui.title4;
+      labelToggle.textContent = labelsVisible ? ui.labelButtonOn : ui.labelButtonOff;
+      if (legendDiv) legendDiv.innerHTML = getLegendHtml();
+    }
+
+    function bombIcon(device) {
+      return L.divIcon({
+        className: "",
+        html: `<span class="bomb-icon" style="color:${pointColor(device)}">💣</span>`,
+        iconSize: [16, 16],
+        iconAnchor: [8, 8]
+      });
+    }
+
+    function renderHazards(features) {
+      markersById.clear();
+      hazardRows.innerHTML = "";
+      hazardLayer.clearLayers();
+      const geo = L.geoJSON(
+        { type: "FeatureCollection", features },
+        {
+          pointToLayer: (feature, latlng) =>
+            L.marker(latlng, {
+              icon: bombIcon(feature.properties.Device)
+            }),
+          onEachFeature: (feature, marker) => {
+            const hazardId = feature.properties["Hazard ID"];
+            markersById.set(hazardId, marker);
+            marker
+              .bindPopup(popupHtml(feature.properties))
+            if (labelsVisible) {
+              marker.bindTooltip(hazardId || "", {
+                permanent: true,
+                direction: "top",
+                className: "hazard-label",
+                offset: [0, -12]
+              });
+            }
+            addTableRow(feature);
+          }
+        }
+      );
+      geo.addTo(hazardLayer);
+    }
+
+    function applySearch() {
+      const q = (searchInput.value || "").trim().toLowerCase();
+      if (!q) {
+        filteredFeatures = allFeatures.slice();
+      } else {
+        filteredFeatures = allFeatures.filter((f) => {
+          const p = f.properties;
+          const text = [
+            p["Hazard ID"],
+            p.Province,
+            p.District,
+            p.Village,
+            localizedProvince(p),
+            localizedDistrict(p),
+            localizedVillage(p)
+          ]
+            .join(" ")
+            .toLowerCase();
+          return text.includes(q);
+        });
+      }
+      renderHazards(filteredFeatures);
+    }
+
+    const provinceLayer = L.geoJSON(null, {
+      style: { color: "#4ad1ff", weight: 2, fillOpacity: 0 }
+    }).addTo(map);
+    const districtLayer = L.geoJSON(null, {
+      style: { color: "#fff176", weight: 1, fillOpacity: 0, dashArray: "4,3" }
+    }).addTo(map);
+
+    // Open data boundaries for Afghanistan admin levels.
+    fetch("https://raw.githubusercontent.com/wmgeolab/geoBoundaries/main/releaseData/gbOpen/AFG/ADM1/geoBoundaries-AFG-ADM1.geojson")
+      .then((r) => r.json())
+      .then((data) => provinceLayer.addData(data))
+      .catch(() => console.warn("Province boundaries not loaded."));
+
+    fetch("https://raw.githubusercontent.com/wmgeolab/geoBoundaries/main/releaseData/gbOpen/AFG/ADM2/geoBoundaries-AFG-ADM2.geojson")
+      .then((r) => r.json())
+      .then((data) => districtLayer.addData(data))
+      .catch(() => console.warn("District boundaries not loaded."));
+
+    fetch("./hazards.geojson")
+      .then((res) => res.json())
+      .then((geojson) => {
+        allFeatures = geojson.features || [];
+        filteredFeatures = allFeatures.slice();
+        renderHazards(filteredFeatures);
+        const bounds = L.geoJSON({ type: "FeatureCollection", features: filteredFeatures }).getBounds();
+        if (bounds.isValid()) {
+          map.fitBounds(bounds, { padding: [20, 20] });
+        }
+      })
+      .catch((err) => {
+        console.error(err);
+        alert("hazards.geojson فایل ونه موندل شو.");
+      });
+
+    const legend = L.control({ position: "bottomright" });
+    legend.onAdd = function () {
+      legendDiv = L.DomUtil.create("div", "legend");
+      legendDiv.innerHTML = getLegendHtml();
+      return legendDiv;
+    };
+    legend.addTo(map);
+
+    searchInput.addEventListener("input", applySearch);
+    langToggle.addEventListener("click", () => {
+      currentLang = currentLang === "ps" ? "en" : "ps";
+      applyUiLanguage();
+      renderHazards(filteredFeatures);
+    });
+    labelToggle.addEventListener("click", () => {
+      labelsVisible = !labelsVisible;
+      applyUiLanguage();
+      renderHazards(filteredFeatures);
+    });
+    applyUiLanguage();
+  </script>
+</body>
+</html>
